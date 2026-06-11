@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WeatherWear — your wardrobe, weather-smart</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1>🧥 WeatherWear</h1>
+    <div id="location-pill" class="location-pill" title="Click to change location">📍 Locating…</div>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab active" data-tab="today">Today</button>
+    <button class="tab" data-tab="log">Log Outfit</button>
+    <button class="tab" data-tab="history">History</button>
+    <button class="tab" data-tab="wardrobe">Wardrobe</button>
+  </nav>
+
+  <main>
+    <!-- ======== TODAY ======== -->
+    <section id="tab-today" class="tab-panel active">
+      <div id="checkin-card" class="card checkin hidden">
+        <h2>How was yesterday's outfit?</h2>
+        <div class="checkin-body">
+          <img id="checkin-photo" class="checkin-photo hidden" alt="Your outfit">
+          <div>
+            <p id="checkin-summary"></p>
+            <p class="muted">Your answer teaches WeatherWear what works for you.</p>
+            <div class="comfort-buttons">
+              <button class="btn comfort" data-comfort="cold">🥶 Too cold</button>
+              <button class="btn comfort primary" data-comfort="good">😌 Comfortable</button>
+              <button class="btn comfort" data-comfort="hot">🥵 Too hot</button>
+            </div>
+            <label class="check-row"><input type="checkbox" id="checkin-wet"> ☔ I got wet / wished I had rain gear</label>
+          </div>
+        </div>
+      </div>
+
+      <div class="card weather-card">
+        <h2>Today's weather</h2>
+        <div id="weather-loading">Fetching weather…</div>
+        <div id="weather-display" class="weather-grid hidden">
+          <div class="weather-main">
+            <span id="w-icon" class="w-icon"></span>
+            <span id="w-temp" class="w-temp"></span>
+          </div>
+          <div class="weather-stats">
+            <div class="stat"><span class="stat-label">Feels like</span><span id="w-feels"></span></div>
+            <div class="stat"><span class="stat-label">Humidity</span><span id="w-humidity"></span></div>
+            <div class="stat"><span class="stat-label">Rain chance</span><span id="w-rain"></span></div>
+            <div class="stat"><span class="stat-label">High / Low</span><span id="w-hilo"></span></div>
+          </div>
+        </div>
+        <div id="weather-error" class="error hidden"></div>
+      </div>
+
+      <div class="card">
+        <h2>What to wear</h2>
+        <div id="recommendation"></div>
+        <p id="rec-basis" class="muted"></p>
+      </div>
+    </section>
+
+    <!-- ======== LOG OUTFIT ======== -->
+    <section id="tab-log" class="tab-panel">
+      <div class="card">
+        <h2>Log today's outfit</h2>
+
+        <label class="field-label">Photo</label>
+        <div id="photo-drop" class="photo-drop">
+          <input type="file" id="photo-input" accept="image/*" hidden>
+          <img id="photo-preview" class="hidden" alt="Outfit preview">
+          <span id="photo-hint">📷 Tap to add a photo of your outfit</span>
+        </div>
+
+        <label class="field-label">What are you wearing? <span class="muted">(tap to select)</span></label>
+        <div id="item-chips" class="chips"></div>
+        <div class="add-item-row">
+          <input type="text" id="new-item-name" placeholder="Add an item, e.g. green parka">
+          <select id="new-item-category">
+            <option value="top">Top</option>
+            <option value="bottom">Bottom</option>
+            <option value="outer">Outerwear</option>
+            <option value="footwear">Footwear</option>
+            <option value="accessory">Accessory</option>
+          </select>
+          <button id="add-item-btn" class="btn">Add</button>
+        </div>
+
+        <label class="field-label">How do you feel right now? <span class="muted">(optional — we'll ask again later)</span></label>
+        <div class="comfort-buttons" id="log-comfort">
+          <button class="btn comfort" data-comfort="cold">🥶 Too cold</button>
+          <button class="btn comfort" data-comfort="good">😌 Comfortable</button>
+          <button class="btn comfort" data-comfort="hot">🥵 Too hot</button>
+        </div>
+
+        <div id="log-weather-note" class="muted"></div>
+        <button id="save-log-btn" class="btn primary big">Save today's outfit</button>
+        <div id="log-status" class="status"></div>
+      </div>
+    </section>
+
+    <!-- ======== HISTORY ======== -->
+    <section id="tab-history" class="tab-panel">
+      <div class="card">
+        <h2>Outfit history</h2>
+        <div id="history-list"></div>
+      </div>
+    </section>
+
+    <!-- ======== WARDROBE ======== -->
+    <section id="tab-wardrobe" class="tab-panel">
+      <div class="card">
+        <h2>Your learned wardrobe</h2>
+        <p class="muted">WeatherWear learns the comfortable temperature range for each item from your daily feedback.</p>
+        <div id="wardrobe-list"></div>
+      </div>
+      <div class="card">
+        <h2>Data</h2>
+        <p class="muted">Everything is stored locally in your browser.</p>
+        <div class="row">
+          <button id="export-btn" class="btn">Export data</button>
+          <button id="import-btn" class="btn">Import data</button>
+          <input type="file" id="import-input" accept="application/json" hidden>
+          <button id="reset-btn" class="btn danger">Reset all data</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Location dialog -->
+  <dialog id="location-dialog">
+    <h2>Set your location</h2>
+    <input type="text" id="city-input" placeholder="Search a city, e.g. Paris">
+    <div id="city-results"></div>
+    <button id="use-gps-btn" class="btn">📍 Use my current location</button>
+    <button id="close-location-btn" class="btn">Close</button>
+  </dialog>
+
+  <script src="app.js"></script>
+</body>
+</html>
