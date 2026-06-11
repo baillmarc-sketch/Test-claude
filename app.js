@@ -22,6 +22,20 @@
   let wardrobe = load(LS.wardrobe, null);
   let location = load(LS.location, null);
 
+  // Entries saved before the switch to Fahrenheit were stored in Celsius.
+  if (entries.length && localStorage.getItem("ww_units") !== "F") {
+    const c2f = (c) => (c * 9) / 5 + 32;
+    for (const e of entries) {
+      if (!e.weather) continue;
+      e.weather.temp = c2f(e.weather.temp);
+      e.weather.feels = c2f(e.weather.feels);
+      e.weather.hi = c2f(e.weather.hi);
+      e.weather.lo = c2f(e.weather.lo);
+    }
+    save(LS.entries, entries);
+  }
+  localStorage.setItem("ww_units", "F");
+
   // Starter wardrobe so the chip list isn't empty on day one.
   if (!wardrobe) {
     wardrobe = [
@@ -64,7 +78,7 @@
       `?latitude=${lat}&longitude=${lon}` +
       "&current=temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code" +
       "&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max" +
-      "&timezone=auto&forecast_days=1";
+      "&temperature_unit=fahrenheit&timezone=auto&forecast_days=1";
     const res = await fetch(url);
     if (!res.ok) throw new Error("Weather service unavailable");
     const data = await res.json();
@@ -144,8 +158,8 @@
     $("#weather-loading").classList.add("hidden");
     $("#weather-display").classList.remove("hidden");
     $("#w-icon").textContent = weatherIcon(w.code);
-    $("#w-temp").textContent = Math.round(w.temp) + "°C";
-    $("#w-feels").textContent = Math.round(w.feels) + "°C";
+    $("#w-temp").textContent = Math.round(w.temp) + "°F";
+    $("#w-feels").textContent = Math.round(w.feels) + "°F";
     $("#w-humidity").textContent = Math.round(w.humidity) + "%";
     $("#w-rain").textContent = Math.round(w.rainProb) + "%";
     $("#w-hilo").textContent = `${Math.round(w.hi)}° / ${Math.round(w.lo)}°`;
@@ -155,7 +169,7 @@
 
   // If an outfit felt too cold, it was dressed for warmer weather than the
   // actual temperature — shift its "comfort temperature" up; too hot, down.
-  const COMFORT_SHIFT = { cold: 4, good: 0, hot: -4 };
+  const COMFORT_SHIFT = { cold: 7, good: 0, hot: -7 };
 
   // Entries the engine can learn from: comfort feedback given, weather known.
   const trainingEntries = () =>
@@ -171,7 +185,7 @@
     const dHum = (e.weather.humidity - w.humidity) / 25;
     const eWet = e.weather.rainProb >= 50 || e.weather.precip > 0 ? 1 : 0;
     const tWet = w.rainProb >= 50 || w.precip > 0 ? 1 : 0;
-    let weight = Math.exp(-(dTemp * dTemp) / (2 * 4 * 4)) *
+    let weight = Math.exp(-(dTemp * dTemp) / (2 * 7 * 7)) *
                  Math.exp(-(dHum * dHum) / 2);
     if (eWet === tWet) weight *= 1.25;
     if (e.comfort === "good") weight *= 1.5; // proven outfits count extra
@@ -186,21 +200,21 @@
       .map(comfortTemp);
     if (!temps.length) return null;
     const min = Math.min(...temps), max = Math.max(...temps);
-    return { count: temps.length, min: min - 2, max: max + 2 };
+    return { count: temps.length, min: min - 4, max: max + 4 };
   }
 
   // Rule-based fallback for the cold start, by feels-like temperature.
   function fallbackRecommendation(w) {
     const t = w.feels;
     const rec = { top: [], bottom: [], outer: [], footwear: [], accessory: [] };
-    if (t >= 24) {
+    if (t >= 75) {
       rec.top.push("T-shirt"); rec.bottom.push("Shorts"); rec.footwear.push("Sandals");
-    } else if (t >= 18) {
+    } else if (t >= 64) {
       rec.top.push("T-shirt"); rec.bottom.push("Jeans"); rec.footwear.push("Sneakers");
-    } else if (t >= 12) {
+    } else if (t >= 54) {
       rec.top.push("Long-sleeve shirt"); rec.bottom.push("Jeans");
       rec.outer.push("Light jacket"); rec.footwear.push("Sneakers");
-    } else if (t >= 5) {
+    } else if (t >= 41) {
       rec.top.push("Sweater"); rec.bottom.push("Jeans");
       rec.outer.push("Light jacket"); rec.footwear.push("Boots");
     } else {
@@ -246,7 +260,7 @@
     }
 
     // Outerwear is optional in warm weather — drop low-confidence suggestions.
-    if (w.feels >= 21 && result.groups.outer?.every((g) => !g.learned)) {
+    if (w.feels >= 70 && result.groups.outer?.every((g) => !g.learned)) {
       delete result.groups.outer;
     }
 
@@ -257,10 +271,10 @@
       const names = rainGear.length ? rainGear.map((g) => g.name) : ["Umbrella"];
       result.notes.push(`☔ ${Math.round(w.rainProb)}% chance of rain — bring: ${names.join(", ")}.`);
     }
-    if (w.humidity >= 80 && w.feels >= 22) {
+    if (w.humidity >= 80 && w.feels >= 72) {
       result.notes.push("💧 High humidity — favor light, breathable fabrics.");
     }
-    if (w.hi - w.lo >= 10) {
+    if (w.hi - w.lo >= 18) {
       result.notes.push(`🌗 Big temperature swing today (${Math.round(w.lo)}°–${Math.round(w.hi)}°) — layers you can shed will help.`);
     }
     return result;
@@ -321,7 +335,7 @@
       isToday ? "How is today's outfit?" : "How was your outfit on " + entry.date + "?";
     const names = entry.items.map((id) => itemById(id)?.name).filter(Boolean);
     $("#checkin-summary").textContent =
-      `${Math.round(entry.weather.temp)}°C, ${Math.round(entry.weather.humidity)}% humidity` +
+      `${Math.round(entry.weather.temp)}°F, ${Math.round(entry.weather.humidity)}% humidity` +
       (names.length ? ` — you wore: ${names.join(", ")}.` : ".");
     const photo = $("#checkin-photo");
     if (entry.photo) { photo.src = entry.photo; photo.classList.remove("hidden"); }
@@ -386,7 +400,7 @@
     if (!currentWeather) return;
     const w = currentWeather;
     $("#log-weather-note").textContent =
-      `Will be saved with today's weather: ${Math.round(w.temp)}°C (feels ${Math.round(w.feels)}°), ` +
+      `Will be saved with today's weather: ${Math.round(w.temp)}°F (feels ${Math.round(w.feels)}°), ` +
       `${Math.round(w.humidity)}% humidity, ${Math.round(w.rainProb)}% rain chance.`;
   }
 
@@ -460,7 +474,7 @@
         <div class="history-meta">
           <div class="history-date">${e.date}</div>
           <div class="history-weather">${weatherIcon(e.weather.code)}
-            ${Math.round(e.weather.temp)}°C · ${Math.round(e.weather.humidity)}% humidity ·
+            ${Math.round(e.weather.temp)}°F · ${Math.round(e.weather.humidity)}% humidity ·
             ${Math.round(e.weather.rainProb)}% rain${e.wet ? " · got wet ☔" : ""}</div>
           <div class="history-items">${names || "<i>no items recorded</i>"}</div>
           <span class="comfort-badge ${cls}">${label}</span>
@@ -478,8 +492,8 @@
 
   // ======================= wardrobe view =======================
 
-  // Map a temperature to a 0–100% position on the -10°…40° range bar.
-  const tempPos = (t) => Math.max(0, Math.min(100, ((t + 10) / 50) * 100));
+  // Map a temperature to a 0–100% position on the 14°F…104°F range bar.
+  const tempPos = (t) => Math.max(0, Math.min(100, ((t - 14) / 90) * 100));
 
   function renderWardrobe() {
     const list = $("#wardrobe-list");
@@ -503,7 +517,7 @@
           const width = Math.max(4, tempPos(stats.max) - left);
           rangeHtml = `
             <div class="range-bar"><div class="range-window" style="left:${left}%;width:${width}%"></div></div>
-            <span class="wardrobe-range">${Math.round(stats.min)}°–${Math.round(stats.max)}°C · worn ${stats.count}×</span>`;
+            <span class="wardrobe-range">${Math.round(stats.min)}°–${Math.round(stats.max)}°F · worn ${stats.count}×</span>`;
         }
         div.innerHTML = `<span class="wardrobe-name">${item.name}</span>${rangeHtml}`;
         list.appendChild(div);
